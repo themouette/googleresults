@@ -17,7 +17,8 @@ var links = [];
 var casper = require("casper").create({
     waitTimeout: 1000,
     pageSettings: {
-        userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.8; rv:23.0) Gecko/20130404 Firefox/23.0"
+        //userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.8; rv:23.0) Gecko/20130404 Firefox/23.0"
+        userAgent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/34.0.1847.116 Chrome/34.0.1847.116 Safari/537.36"
     }
 });
 var currentPage = 1;
@@ -104,17 +105,18 @@ var processPage = function() {
     
     // Requesting next page
     url = this.getCurrentUrl();
-    this.thenClick("#pnnext")
-        .then(function() {
-            this.waitFor(function() {
-                return url !== this.getCurrentUrl();
-            });
-        })
-        .then(function () {
-            this.waitUntilVisible('h3.r a', processPage, terminate);
-        });
-    
+    this
+        .wait((Math.random() * 5) * 1000, function () {
+            this
+                .thenClick("#pnnext")
+                .then(function() {
+                    this.waitFor(function() {
+                        return url !== this.getCurrentUrl();
+                    }, processPage, terminate);
+                });
+        }, terminate);
 };
+
 
 // write links to the output if not streamed.
 function terminate(err){
@@ -133,7 +135,6 @@ casper.start("http://google.fr/", function() {
 });
 
 casper
-    .waitWhileVisible('.gssb_c')
     .waitForSelector('#pnnext', processPage, terminate);
 
 casper.run();
