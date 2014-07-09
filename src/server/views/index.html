@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <script src="/socket.io/socket.io.js"></script>
+        <script>
+            var socket = io();
+            var socketid;
+            socket.on('connect', function () {
+                // ready to start
+                var form = document.querySelector('form#search');
+                form.addEventListener('submit', function (e) {
+                    e.preventDefault();
+                    submitForm(form); 
+                });
+                form.querySelector('input[type="submit"]').removeAttribute('disabled');
+            });
+            socket.on('signin', function (data) {
+               socketid = data; 
+            });
+            socket.on('results', function (data) {
+                console.log(JSON.parse(data));
+            });
+            
+            function submitForm(form) {
+                var xhr = new XMLHttpRequest();
+                
+                xhr.addEventListener('load', function (evt) {
+                    if (/^2/.test(xhr.status)) {
+                        // success
+                        //console.log(xhr.responseText);
+                    } else {
+                        // failure
+                    }
+                });
+                xhr.addEventListener('error', function () {
+                    // something went wrong
+                });
+                xhr.addEventListener('progress', function () {
+                    // Use for long polling
+                });
+                
+                xhr.open('POST', form.getAttribute('action'));
+                
+                xhr.setRequestHeader("Content-Type", "application/json");
+                xhr.send(JSON.stringify({
+                    query: form.querySelector('input[name=query]').value,
+                    limit: 10,
+                    socketid: socketid
+                }));
+            }
+        </script>
+    </head>
+    <body>
+        <h1>Google results</h1>
+        <p>The easiest way to grab google results.</p>
+        <form method="POST" action="/" id="search">
+            <p><label>Query:</label><input type="text" name="query"/></p>
+            <p><input type="submit" value="Submit" disabled/></p>
+        </form>
+    </body>
+</html>

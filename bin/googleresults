@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+
+casperjs src/casper/googleresults.js $@
