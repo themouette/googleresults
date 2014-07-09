@@ -30,6 +30,8 @@ var search = casper.cli.args.join(" ");
 var limit = casper.cli.options.limit || 10;
 // print results as live stream
 var stream = casper.cli.options.stream;
+// return rich objects
+var rich = casper.cli.options.rich;
 var help = casper.cli.options.about;
 
 if (help) {
@@ -59,6 +61,7 @@ function usage() {
         .echo("    --about         show this help.")
         .echo("    --limit=LIMIT   crawl LIMIT google pages (default 10).")
         .echo("    --stream        return results when available. This writes formated results as soon as it is extracted.")
+        .echo("    --rich          return json objects instead of raw url.")
         .echo("")
         .exit(1)
     ;
@@ -66,14 +69,24 @@ function usage() {
 
 
 // Retrieve links from a google results page page
-function getLinks() {
+function getLinks(rich) {
     //var links = document.querySelectorAll("h3.r a");
     return Array.prototype.map.call(document.querySelectorAll("h3.r a"), function(e) {
+        var href;
         try {
             // google handles redirects hrefs to some script of theirs
-            return (/url\?q=(.*)&sa=U/).exec(e.getAttribute("href"))[1];
+            href = (/url\?q=(.*)&sa=U/).exec(e.getAttribute("href"))[1];
         } catch (err) {
-            return e.getAttribute("href");
+            href = e.getAttribute("href");
+        }
+        
+        if (!rich) {
+            return href;
+        }
+        
+        return {
+            href: href,
+            title: e.innerText
         }
     });
 }
@@ -99,7 +112,7 @@ var processPage = function() {
     this
         .then(function () {
             // get all available links
-            pageLinks = this.evaluate(getLinks);
+            pageLinks = this.evaluate(getLinks, rich);
             links = links.concat(pageLinks);
             
             // if stream, then write to output
