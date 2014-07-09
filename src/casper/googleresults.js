@@ -88,33 +88,44 @@ function formatLinks(links) {
 
 // handle page crawling
 var processPage = function() {
+    // emulate a user looking at results with a random time
+    var waitTime = 1 + (Math.random() * 3);
+    this
+        //.echo('Will wait for ' + Math.floor(waitTime))
+        .wait(waitTime * 1000);
     var url;
     var pageLinks;
     // capturing current page
-    pageLinks = this.evaluate(getLinks);
-    links = links.concat(pageLinks);
-    if (stream) {
-        formatLinks(pageLinks);
-    }
-    // don't go too far down the rabbit hole
-    if (currentPage >= limit || !this.exists("#pnnext")) {
-        return terminate.call(casper);
-    }
-
-    currentPage++;
-    
-    // Requesting next page
-    url = this.getCurrentUrl();
     this
-        .wait((Math.random() * 5) * 1000, function () {
+        .then(function () {
+            // get all available links
+            pageLinks = this.evaluate(getLinks);
+            links = links.concat(pageLinks);
+            
+            // if stream, then write to output
+            if (stream) {
+                formatLinks(pageLinks);
+            }
+            
+            // don't go too far down the rabbit hole
+            if (currentPage >= limit || !this.exists("#pnnext")) {
+                return terminate.call(casper);
+            }
+        
+            currentPage++;
+            
+            // Requesting next page
+            url = this.getCurrentUrl();
             this
+                // click on page next
                 .thenClick("#pnnext")
+                // wait url changes
                 .then(function() {
                     this.waitFor(function() {
                         return url !== this.getCurrentUrl();
                     }, processPage, terminate);
                 });
-        }, terminate);
+        });
 };
 
 
@@ -124,7 +135,7 @@ function terminate(err){
     if (!stream) {
         formatLinks(links);
     }
-};
+}
 
 
 
