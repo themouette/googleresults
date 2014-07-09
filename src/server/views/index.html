@@ -18,21 +18,30 @@
                socketid = data; 
             });
             socket.on('results', function (data) {
-                document.getElementById('results').innerHTML = document.getElementById('results').innerHTML + '<p>' + JSON.parse(data).join('</p><p>') + '</p>'
-                console.log(JSON.parse(data));
+                console.log(data);
+                var str = JSON.parse(data);
+                str = str.map(function (item) {return item.title + ' - ' + item.href}).join('</p><p>');
+                document.getElementById('results').innerHTML = document.getElementById('results').innerHTML + '<p>' + str + '</p>';
+                console.log(str);
             });
             
             function submitForm(form) {
-                document.getElementById('results').innerHTML = '';
+                var results = document.getElementById('results');
+                results.innerHTML = '';
+                var loading = document.getElementById('loading');
+                loading.style.visibility = 'visible';
                 var xhr = new XMLHttpRequest();
                 
                 xhr.addEventListener('load', function (evt) {
                     if (/^2/.test(xhr.status)) {
                         // success
-                        //console.log(xhr.responseText);
+                        // display download links
+                        var data = JSON.parse(xhr.responseText);
+                        results.innerHTML = results.innerHTML + '<p><a href="'+ data.csv + '" target="_blank">Download csv</a> - <a href="'+data.json+'" target="_blank">Download JSON</a></p>';
                     } else {
                         // failure
                     }
+                    loading.style.visibility = 'hidden';
                 });
                 xhr.addEventListener('error', function () {
                     // something went wrong
@@ -45,20 +54,27 @@
                 
                 xhr.setRequestHeader("Content-Type", "application/json");
                 xhr.send(JSON.stringify({
-                    query: form.querySelector('input[name=query]').value,
-                    limit: 10,
+                    query: form.querySelector('input[name=query]').value || 'googleresults',
+                    limit: form.querySelector('input[name=limit]').value || 10,
                     socketid: socketid
                 }));
             }
         </script>
+        <style type="text/css">
+            #loading {
+                visibility: hidden;
+            }
+        </style>
     </head>
     <body>
         <h1>Google results</h1>
         <p>The easiest way to grab google results.</p>
         <form method="POST" action="/" id="search">
             <p><label>Query:</label><input type="text" name="query"/></p>
+            <p><label>Nb results:</label><input type="number" name="limit" value="10"/></p>
             <p><input type="submit" value="Submit" disabled/></p>
         </form>
         <div id="results"></div>
+        <div id="loading">loading...</div>
     </body>
 </html>

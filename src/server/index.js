@@ -10,8 +10,10 @@ var express = require('express');
 var bodyParser = require('body-parser');
 var methodOverride = require('method-override');
 var session = require('express-session');
+var serveStatic = require('serve-static')
 var swig = require('swig');
 var cookie = require("cookie");
+var writeAttachment = require('./lib/attachment').write;
 
 //
 // ## SimpleServer `SimpleServer(obj)`
@@ -58,6 +60,8 @@ var SITE_SECRET = 'I am not wearing any pants';
     swig.setDefaults({ cache: false });
     // NOTE: You should always cache templates in a production environment.
     // Don't leave both of these to `false` in production!
+    
+    app.set('downloadDir', path.resolve(path.join(__dirname, '../../client/download')));
 })();
 
 //
@@ -66,7 +70,8 @@ var SITE_SECRET = 'I am not wearing any pants';
 
 app.get('/', function(req, res, next) {
     res.render('index');
-})
+});
+app.use('/download', serveStatic(app.get('downloadDir'), {}));
 app.post('/', function (req, res, next) {
     var links = [];
     
@@ -76,10 +81,12 @@ app.post('/', function (req, res, next) {
     if (!socketid) {
       return next(new Error('No valid socket'));
     }
+    if (!search.length) {
+        return newt(new Error('No searchword'));
+    }
     
-    var err;
     var casperresults = path.resolve(path.join(__dirname, '..', '..', 'bin', 'googleresults'));
-    var ls = child_process.spawn(casperresults, ['--stream', '--limit=' + limit].concat(search.split(' ')));
+    var ls = child_process.spawn(casperresults, ['--stream', '--limit=' + limit, '--rich'].concat(search.split(' ')));
     ls.stdout.on('data', function (data) {
         console.log('stdout: ' + data);
         //res.write(data);
@@ -88,15 +95,21 @@ app.post('/', function (req, res, next) {
     });
     ls.stderr.on('data', function (data) {
         console.log('stderr: ' + data);
-        next(data);
-        err = data;
     });
     ls.on('close', function (code) {
         console.log('child process exited with code ' + code);
-        if (err) {
-            return ;
+        try {
+            var csv = writeAttachment(app.get('downloadDir'), links, 'csv');
+            var json = writeAttachment(app.get('downloadDir'), links, 'json');
+        } catch (e) {
+            console.log(e);
         }
-        res.end(JSON.stringify(links));
+        var statusCode = code == 0 ? 200 : 500;
+        res.send(JSON.stringify({
+            links: links,
+            csv: '/download/' + csv,
+            json: '/download/' + json
+        }), statusCode);
     });
     
 });
