@@ -10,14 +10,14 @@ module.exports.format = function (data, into) {
 }
 
 function formatJson(data) {
-    return JSON.stringify(data);
+    return JSON.stringify(data, undefined, 2);
 }
 
 function formatCsv(data) {
     function formatLine (item) {
         return Object.keys(item)
                 .map(function (key) {
-                    return item[key];
+                    return JSON.stringify(item[key]).replace(/;/g, '"";""');
                 })
                 .join(';');
     }
