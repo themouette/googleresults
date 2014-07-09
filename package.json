@@ -20,5 +20,11 @@
   },
   "devDependencies": {
     "nodemon": "^1.2.1"
+  },
+  "scripts": {
+    "install": "mkdir -p client/download",
+    "start": "node src/server/index.js",
+    "dev": "nodemon src/server/index.js",
+    "test": "mocha tests"
   }
 }
