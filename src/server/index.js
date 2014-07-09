@@ -68,6 +68,7 @@ app.get('/', function(req, res, next) {
     res.render('index');
 })
 app.post('/', function (req, res, next) {
+    var links = [];
     
     var limit = req.body.limit || 10;
     var search = req.body.query || '';
@@ -83,6 +84,7 @@ app.post('/', function (req, res, next) {
         console.log('stdout: ' + data);
         //res.write(data);
         io.to(socketid).emit('results', '' + data);
+        links = links.concat(JSON.parse(data));
     });
     ls.stderr.on('data', function (data) {
         console.log('stderr: ' + data);
@@ -91,9 +93,10 @@ app.post('/', function (req, res, next) {
     });
     ls.on('close', function (code) {
         console.log('child process exited with code ' + code);
-        if (!err) {
-            res.end();
+        if (err) {
+            return ;
         }
+        res.end(JSON.stringify(links));
     });
     
 });

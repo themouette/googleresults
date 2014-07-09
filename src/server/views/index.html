@@ -18,10 +18,12 @@
                socketid = data; 
             });
             socket.on('results', function (data) {
+                document.getElementById('results').innerHTML = document.getElementById('results').innerHTML + '<p>' + JSON.parse(data).join('</p><p>') + '</p>'
                 console.log(JSON.parse(data));
             });
             
             function submitForm(form) {
+                document.getElementById('results').innerHTML = '';
                 var xhr = new XMLHttpRequest();
                 
                 xhr.addEventListener('load', function (evt) {
@@ -57,5 +59,6 @@
             <p><label>Query:</label><input type="text" name="query"/></p>
             <p><input type="submit" value="Submit" disabled/></p>
         </form>
+        <div id="results"></div>
     </body>
 </html>
