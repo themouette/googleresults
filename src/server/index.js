@@ -5,6 +5,7 @@
 //
 var http = require('http');
 var path = require('path');
+var fs = require('fs');
 var mkdirp = require('mkdirp');
 var child_process = require('child_process');
 var express = require('express');
