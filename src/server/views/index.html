@@ -13,43 +13,60 @@
             #l-wrapper {
                 padding: 0 20%;
             }
+            #l-right {
+                float: right;
+                width: 30%;
+            }
+            #l-center {
+            }
             #results {
                 font-size: 12px;
             }
             #loading {
-                visibility: hidden;
-                margin: 30px 20%;
-                padding: 30px;
+                display: none;
+                margin: 0 20% 10px 20%;
+                padding: 10px;
                 text-align: center;
                 background-color: #e7e7e7;
                 border-color: #c7c7c7;
                 color: #4f4f4f;
             }
+            #downloads {
+                display: none;
+            }
             #screenshot {
-                float: right;
-                width: 30%;
+                margin: auto;
+                border: 1px solid #000;
+                display: block;
+                width: 90%;
+                display: none;
             }
         </style>
     </head>
     <body>
         <div id="l-wrapper">
             <h1>Google results</h1>
-            <p>The easiest way to grab google results.</p>
-            <img id="screenshot" />
-            <form method="POST" action="/" id="search">
-                <p>
-                    <label>Query:</label><input type="text" name="query"/>
-                    <input type="submit" value="Submit" disabled/>
-                </p>
-                <fieldset>
-                    <legend>Options</legend>
-                    <p><label>Nb pages:</label><input type="number" name="limit" value="10"/></p>
-                    <p><label>Wait </label><input type="number" name="wait" value="1"/> seconds for search to complete.</p>
-                    <p><label>Screenshots:</label><input type="checkbox" name="screenshot" value="1"/></p>
-                </fieldset>
-            </form>
-            <div id="results"></div>
-            <div id="loading">loading...</div>
+            <div id="l-right">
+                <div id="loading">loading...</div>
+                <div id="downloads"></div>
+                <img id="screenshot" />
+            </div>
+            <div id="l-center">
+                <p>The easiest way to grab google results.</p>
+                <form method="POST" action="/" id="search">
+                    <p>
+                        <label>Query:</label><input type="text" name="query" tabindex="1" autofocus/>
+                        <input type="submit" value="Submit" disabled/>
+                    </p>
+                    <fieldset>
+                        <legend>Options</legend>
+                        <p><label>Nb pages:</label><input type="number" name="limit" value="10" tabindex="2"/></p>
+                        <p><label>Screenshots:</label><input type="checkbox" name="screenshot" value="1" tabindex="3"/></p>
+                        <p><label>Wait </label><input type="number" name="wait" value="1" tabindex="4"/> seconds for search to complete.</p>
+                    </fieldset>
+                </form>
+                <div id="results"></div>
+            </div>
         </div>
         <script>
             var socket = io();
@@ -77,16 +94,20 @@
             socket.on('screenshot', function (data) {
                 var screenshot = JSON.parse(data);
                 var image = document.getElementById('screenshot');
+                image.style.display = 'block';
                 image.src = screenshot.url;
             });
 
             function submitForm(form) {
                 var image = document.getElementById('screenshot');
+                image.style.display = 'none';
                 image.src = '';
                 var results = document.getElementById('results');
                 results.innerHTML = '';
                 var loading = document.getElementById('loading');
-                loading.style.visibility = 'visible';
+                loading.style.display = 'block';
+                var downloads = document.getElementById('downloads');
+                downloads.style.display = 'none';
                 var xhr = new XMLHttpRequest();
 
                 xhr.addEventListener('load', function (evt) {
@@ -99,11 +120,12 @@
                                     ' - ' +
                                     '<a href="'+data.json+'" target="_blank">Download JSON</a>' +
                                   '</p>';
-                        results.innerHTML = results.innerHTML + str;
+                        downloads.innerHTML = str;
                     } else {
                         // failure
                     }
-                    loading.style.visibility = 'hidden';
+                    loading.style.display = 'none';
+                    downloads.style.display = 'block';
                 });
                 xhr.addEventListener('error', function () {
                     // something went wrong
