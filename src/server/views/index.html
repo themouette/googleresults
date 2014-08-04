@@ -25,16 +25,28 @@
                 border-color: #c7c7c7;
                 color: #4f4f4f;
             }
+            #screenshot {
+                float: right;
+                width: 30%;
+            }
         </style>
     </head>
     <body>
         <div id="l-wrapper">
             <h1>Google results</h1>
             <p>The easiest way to grab google results.</p>
+            <img id="screenshot" />
             <form method="POST" action="/" id="search">
-                <p><label>Query:</label><input type="text" name="query"/></p>
-                <p><label>Nb pages:</label><input type="number" name="limit" value="10"/></p>
-                <p><input type="submit" value="Submit" disabled/></p>
+                <p>
+                    <label>Query:</label><input type="text" name="query"/>
+                    <input type="submit" value="Submit" disabled/>
+                </p>
+                <fieldset>
+                    <legend>Options</legend>
+                    <p><label>Nb pages:</label><input type="number" name="limit" value="10"/></p>
+                    <p><label>Wait </label><input type="number" name="wait" value="1"/> seconds for search to complete.</p>
+                    <p><label>Screenshots:</label><input type="checkbox" name="screenshot" value="1"/></p>
+                </fieldset>
             </form>
             <div id="results"></div>
             <div id="loading">loading...</div>
@@ -47,12 +59,12 @@
                 var form = document.querySelector('form#search');
                 form.addEventListener('submit', function (e) {
                     e.preventDefault();
-                    submitForm(form); 
+                    submitForm(form);
                 });
                 form.querySelector('input[type="submit"]').removeAttribute('disabled');
             });
             socket.on('signin', function (data) {
-               socketid = data; 
+               socketid = data;
             });
             socket.on('results', function (data) {
                 var results = document.getElementById('results');
@@ -62,14 +74,21 @@
                     }).join('</li><li>');
                 results.innerHTML = results.innerHTML + '<ul><li>' + str + '</li></ul>';
             });
-            
+            socket.on('screenshot', function (data) {
+                var screenshot = JSON.parse(data);
+                var image = document.getElementById('screenshot');
+                image.src = screenshot.url;
+            });
+
             function submitForm(form) {
+                var image = document.getElementById('screenshot');
+                image.src = '';
                 var results = document.getElementById('results');
                 results.innerHTML = '';
                 var loading = document.getElementById('loading');
                 loading.style.visibility = 'visible';
                 var xhr = new XMLHttpRequest();
-                
+
                 xhr.addEventListener('load', function (evt) {
                     if (/^2/.test(xhr.status)) {
                         // success
@@ -92,13 +111,15 @@
                 xhr.addEventListener('progress', function () {
                     // Use for long polling
                 });
-                
+
                 xhr.open('POST', form.getAttribute('action'));
-                
+
                 xhr.setRequestHeader("Content-Type", "application/json");
                 xhr.send(JSON.stringify({
                     query: form.querySelector('input[name=query]').value || 'googleresults',
                     limit: form.querySelector('input[name=limit]').value || 10,
+                    wait: form.querySelector('input[name=wait]').value || 1,
+                    screenshot: form.querySelector('input[name=screenshot]').checked,
                     socketid: socketid
                 }));
             }

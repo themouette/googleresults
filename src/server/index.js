@@ -16,6 +16,8 @@ var serveStatic = require('serve-static');
 var swig = require('swig');
 var cookie = require("cookie");
 var writeAttachment = require('./lib/attachment').write;
+var debug = require('debug')('googleresults:express');
+var os = require('os');
 
 //
 // ## SimpleServer `SimpleServer(obj)`
@@ -63,7 +65,7 @@ var SITE_SECRET = 'I am not wearing any pants';
     // NOTE: You should always cache templates in a production environment.
     // Don't leave both of these to `false` in production!
 
-    app.set('downloadDir', path.resolve(path.join(__dirname, '../../client/download')));
+    app.set('downloadDir', path.resolve(path.join(__dirname, '..','..','client','download')));
     if (!fs.existsSync(app.get('downloadDir'))) {
         mkdirp(app.get('downloadDir'));
     }
@@ -78,50 +80,96 @@ app.get('/', function(req, res, next) {
 });
 app.use('/download', serveStatic(app.get('downloadDir'), {}));
 app.post('/', function (req, res, next) {
+    // define a link store
     var links = [];
 
+    // Parse arguments.
     var limit = req.body.limit || 10;
     var search = req.body.query || '';
+    var wait = typeof req.body.wait === "undefined" ? 1 : req.body.wait;
     var socketid = req.body.socketid;
+    var screenshot = req.body.screenshot;
+    // validate arguments.
     if (!socketid) {
       return next(new Error('No valid socket'));
     }
     if (!search.length) {
-        return newt(new Error('No searchword'));
+        return next(new Error('No searchword'));
     }
 
+    // lanch casper cli
     var casperresults = path.resolve(path.join(__dirname, '..', '..', 'bin', 'googleresults'));
-    var ls = child_process.spawn(casperresults, ['--stream', '--limit=' + limit, '--rich'].concat(search.split(' ')));
+    var args = [
+            '--stream',
+            '--limit=' + limit,
+            '--rich',
+            '--wait='+wait,
+        ];
+    if (screenshot) {
+        args.push('--screenshot='+app.get('downloadDir'));
+    }
+    var ls = child_process.spawn(casperresults, args.concat(search.split(' ')));
     ls.stdout.on('data', function (data) {
-        console.log('stdout: ' + data);
-        //res.write(data);
-        io.to(socketid).emit('results', '' + data);
-        links = links.concat(JSON.parse(data));
+        debug('stdout: ' + data);
+        // as many chunks of data can be received at once,
+        // we need to separate each line
+        // and remove epty lines.
+        data.toString()
+            .split(os.EOL)
+            .filter(function (msg) {
+                return msg.length;
+            })
+            .forEach(function handleCasperMessage(msg) {
+                var message;
+                try {
+                    message = JSON.parse(msg);
+                } catch (err) {
+                    debug('unable to parse data ' + msg);
+                    debug(err);
+                }
+                switch(message.type) {
+                    case 'screenshot':
+                        io.to(socketid).emit('screenshot', JSON.stringify({
+                            url: '/download/' + message.filename
+                        }));
+                        break;
+                    case 'links':
+                        io.to(socketid).emit('results', JSON.stringify(message.links));
+                        // Add to links store.
+                        links = links.concat(message.links);
+                        break;
+                    case 'error':
+                        debug('ERROR Casper script returned following error:', JSON.stringify(message));
+                        break;
+                }
+        });
     });
     ls.stderr.on('data', function (data) {
-        console.log('stderr: ' + data);
+        debug('stderr: ' + data);
     });
     ls.on('close', function (code) {
-        console.log('child process exited with code ' + code);
+        debug('child process exited with code ' + code);
         try {
             var csv = writeAttachment(app.get('downloadDir'), links, 'csv');
             var json = writeAttachment(app.get('downloadDir'), links, 'json');
         } catch (e) {
-            console.log(e);
+            debug(e);
         }
         var statusCode = code == 0 ? 200 : 500;
-        res.send(JSON.stringify({
-            links: links,
-            csv: '/download/' + csv,
-            json: '/download/' + json
-        }), statusCode);
+        res
+            .status(statusCode)
+            .send(JSON.stringify({
+                links: links,
+                csv: '/download/' + csv,
+                json: '/download/' + json
+            }));
     });
 
 });
 
 // error handler
 app.use(function(err, req, res, next){
-  console.error(err.stack);
+  debug(err.stack);
   res.send(500, 'Something broke!');
 });
 /*

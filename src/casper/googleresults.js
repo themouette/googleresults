@@ -33,6 +33,8 @@ var stream = casper.cli.options.stream;
 // return rich objects
 var rich = casper.cli.options.rich;
 var help = casper.cli.options.about;
+var wait = isNumber(casper.cli.options.wait) ? casper.cli.options.wait : 1;
+var screenshot = casper.cli.options.screenshot;
 
 if (help) {
     usage();
@@ -62,11 +64,16 @@ function usage() {
         .echo("    --limit=LIMIT   crawl LIMIT google pages (default 10).")
         .echo("    --stream        return results when available. This writes formated results as soon as it is extracted.")
         .echo("    --rich          return json objects instead of raw url.")
+        .echo("    --wait          time to wait before parsing google results.")
+        .echo("    --screenshots   directory where to store screenshots")
         .echo("")
         .exit(1)
     ;
 }
 
+function isNumber(n) {
+    return !isNaN(parseFloat(n)) && isFinite(n);
+}
 
 // Retrieve links from a google results page page
 function getLinks(rich) {
@@ -91,18 +98,44 @@ function getLinks(rich) {
     });
 }
 
+function serializeLinks(links) {
+    return JSON.stringify({type: 'links', links: links});
+}
 // write links to output
 function formatLinks(links) {
     if (!links instanceof Array) {
         links = [links];
     }
-    casper.echo(JSON.stringify(links));
+    // backward compatibility requires old format.
+    var serialized = stream ? serializeLinks(links) : JSON.stringify(links);
+    casper.echo(serialized);
+}
+
+function serializeScreenshot(filename) {
+    return JSON.stringify({type: 'screenshot', filename: filename});
+}
+function formatScreenshot(filename) {
+    return casper.echo(serializeScreenshot(filename));
+}
+function takeScreenshot() {
+    var screenshotFile = (+new Date()).toString(36) + '.png';
+
+    casper
+        .capture(screenshot + '/' + screenshotFile)
+        .then(function () {
+            // send screenshot
+            if (stream) {
+                formatScreenshot(screenshotFile);
+            }
+        });
+
+    return casper;
 }
 
 // handle page crawling
 var processPage = function() {
     // emulate a user looking at results with a random time
-    var waitTime = 1 + (Math.random() * 3);
+    var waitTime = wait + (Math.random() * 3);
     this
         //.echo('Will wait for ' + Math.floor(waitTime))
         .wait(waitTime * 1000);
@@ -115,6 +148,9 @@ var processPage = function() {
             pageLinks = this.evaluate(getLinks, rich);
             links = links.concat(pageLinks);
 
+            if (screenshot) {
+                takeScreenshot();
+            }
             // if stream, then write to output
             if (stream) {
                 formatLinks(pageLinks);
@@ -144,10 +180,15 @@ var processPage = function() {
 
 // write links to the output if not streamed.
 function terminate(err){
-    casper.capture('terminate.png');
-    if (!stream) {
-        formatLinks(links);
+    if (screenshot) {
+        takeScreenshot();
     }
+    casper
+        .then(function () {
+            if (!stream) {
+                formatLinks(links);
+            }
+        });
 }
 
 
@@ -155,8 +196,9 @@ function terminate(err){
 casper.start("http://google.fr/", function() {
     this.fill('form[action="/search"]', {
         q: search
-    }, true);
+    }, false);
 });
+casper.thenClick('#gbqfb');
 
 casper
     .waitForSelector('#pnnext', processPage, terminate);
