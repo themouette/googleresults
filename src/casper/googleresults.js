@@ -5,7 +5,7 @@
  * Capture multiple pages of google search results
  *
  * Usage:
- * 
+ *
  * $ casperjs googleresults.js my search terms
  * $ casperjs googleresults.js my search terms --limit=5
  * $ casperjs googleresults.js my search terms --stream
@@ -45,7 +45,7 @@ if (search.length === 0) {
 
 casper.on('error', function (err) {
     casper.log(err, 'error');
-    casper.capture('error.png'); 
+    casper.capture('error.png');
     casper.exit(1);
 });
 
@@ -79,15 +79,15 @@ function getLinks(rich) {
         } catch (err) {
             href = e.getAttribute("href");
         }
-        
+
         if (!rich) {
             return href;
         }
-        
+
         return {
             href: href,
             title: e.innerText
-        }
+        };
     });
 }
 
@@ -114,19 +114,19 @@ var processPage = function() {
             // get all available links
             pageLinks = this.evaluate(getLinks, rich);
             links = links.concat(pageLinks);
-            
+
             // if stream, then write to output
             if (stream) {
                 formatLinks(pageLinks);
             }
-            
+
             // don't go too far down the rabbit hole
             if (currentPage >= limit || !this.exists("#pnnext")) {
                 return terminate.call(casper);
             }
-        
+
             currentPage++;
-            
+
             // Requesting next page
             url = this.getCurrentUrl();
             this
