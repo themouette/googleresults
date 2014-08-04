@@ -5,12 +5,13 @@
 //
 var http = require('http');
 var path = require('path');
+var mkdirp = require('mkdirp');
 var child_process = require('child_process');
 var express = require('express');
 var bodyParser = require('body-parser');
 var methodOverride = require('method-override');
 var session = require('express-session');
-var serveStatic = require('serve-static')
+var serveStatic = require('serve-static');
 var swig = require('swig');
 var cookie = require("cookie");
 var writeAttachment = require('./lib/attachment').write;
@@ -23,7 +24,7 @@ var writeAttachment = require('./lib/attachment').write;
 //  * `ip` - bind address. If `process.env.IP` is set, _it overrides this value_.
 //
 var app = express();
-var router = express.Router(); 
+var router = express.Router();
 var server = http.createServer(app);
 var io = require('socket.io')(server);
 
@@ -60,8 +61,11 @@ var SITE_SECRET = 'I am not wearing any pants';
     swig.setDefaults({ cache: false });
     // NOTE: You should always cache templates in a production environment.
     // Don't leave both of these to `false` in production!
-    
+
     app.set('downloadDir', path.resolve(path.join(__dirname, '../../client/download')));
+    if (!fs.existsSync(app.get('downloadDir'))) {
+        mkdirp(app.get('downloadDir'));
+    }
 })();
 
 //
@@ -74,7 +78,7 @@ app.get('/', function(req, res, next) {
 app.use('/download', serveStatic(app.get('downloadDir'), {}));
 app.post('/', function (req, res, next) {
     var links = [];
-    
+
     var limit = req.body.limit || 10;
     var search = req.body.query || '';
     var socketid = req.body.socketid;
@@ -84,7 +88,7 @@ app.post('/', function (req, res, next) {
     if (!search.length) {
         return newt(new Error('No searchword'));
     }
-    
+
     var casperresults = path.resolve(path.join(__dirname, '..', '..', 'bin', 'googleresults'));
     var ls = child_process.spawn(casperresults, ['--stream', '--limit=' + limit, '--rich'].concat(search.split(' ')));
     ls.stdout.on('data', function (data) {
@@ -111,7 +115,7 @@ app.post('/', function (req, res, next) {
             json: '/download/' + json
         }), statusCode);
     });
-    
+
 });
 
 // error handler
@@ -134,7 +138,7 @@ io.set('authorization', function (handshakeData, accept) {
 
   } else {
     return accept('No cookie transmitted.', false);
-  } 
+  }
 
   accept(null, true);
 });
